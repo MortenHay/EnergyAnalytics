@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import os
 import cvxpy as cp
 from UsefulFunctions import PricesDK, LoadData
+#This is an update
 
 # %% Load Data
 df_prices = LoadData()
