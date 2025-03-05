@@ -4,10 +4,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import cvxpy as cp
-from UsefulFunctions import PricesDK, LoadData
+from UsefulFunctions import PricesDK, LoadPriceData, LoadProsumerData
 
 # %% Load Data
-df_prices = LoadData()
+df_prices = LoadPriceData()
 df_prices = PricesDK(df_prices)
 df_prices.head()
 # %% Task 1.1:
@@ -218,3 +218,39 @@ for col in df_arbitrage_day.loc[:, df_arbitrage_day.columns.str.startswith("pric
     df_arbitrage_day.plot(
         x=col, y="Profit [DKK]", kind="scatter", title=f"Profit vs {col}", grid=True
     )
+
+
+# %% Task 3
+df_prices = LoadPriceData()
+df_prices = PricesDK(df_prices)
+PH_prices = LoadProsumerData()
+df_prices = df_prices[["HourDK", "Spot", "Buy"]]
+PH_prices = PH_prices[["Consumption"]]
+df_prices = df_prices[
+    (df_prices["HourDK"].dt.year >= 2022) & (df_prices["HourDK"].dt.year <= 2023)
+].reset_index()
+df_prices["Spot"] = df_prices["Spot"]
+df_prices.rename(columns={"Spot": "Sell"}, inplace=True)
+df_prices["Consumption"] = PH_prices[["Consumption"]]
+
+# Explicitly extract the year and hour from the datetime column
+df_prices["year"] = df_prices["HourDK"].dt.year
+# df_prices["hour"] = df_prices["HourDK"].dt.hour
+
+df_mean = (
+    df_prices.groupby(["year"])
+    .agg({"Buy": "mean", "Sell": "mean", "Consumption": "sum"})
+    .reset_index()
+)
+df_mean["Cost"] = df_mean["Buy"] * df_mean["Consumption"]
+
+df_prices["hourly cost"] = df_prices["Buy"] * df_prices["Consumption"]
+df_mean_1 = df_prices.groupby(["year"]).agg({"hourly cost": "sum"}).reset_index()
+df_mean["Hourly Cost"] = df_mean_1["hourly cost"]
+
+# df_prices = df_prices[["TimeDK", "Consumption"]]
+
+# main - 2 dataframes, priser, consumption(pv),
+# i df pricces, ny kolonne - consumtion fra den anden dataframe.
+
+# result = pd.merge(df_prices, on='HourDK', how='inner')

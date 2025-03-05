@@ -67,7 +67,7 @@ def PricesDK(df_prices):
     return df_prices
 
 
-def LoadData(filename="ElspotpricesEA.csv"):
+def LoadPriceData(filename="ElspotpricesEA.csv"):
     ### Load electricity prices ###
     price_path = os.path.join(os.getcwd(), filename)
     df_prices = pd.read_csv(price_path)
@@ -86,6 +86,37 @@ def LoadData(filename="ElspotpricesEA.csv"):
 
     ### Keep only the local time and price columns ###
     df_prices = df_prices[["HourDK", "SpotPriceDKK"]]
+
+    ### Reset the index ###
+    df_prices = df_prices.reset_index(drop=True)
+
+    return df_prices
+
+
+def LoadProsumerData(filename="ProsumerHourly.csv"):
+    ### Load electricity prices ###
+    price_path = os.path.join(os.getcwd(), filename)
+    df_prices = pd.read_csv(price_path)
+
+    ### Convert to datetime ###
+    # df_prices["HourDK"] = pd.to_datetime(df_prices["HourDK"])
+    # df_prices["HourUTC"] = pd.to_datetime(df_prices["HourUTC"])
+    # df_prices["HourUTC"] = df_prices["HourUTC"].dt.tz_localize("UTC")
+    # df_prices["HourDK"] = df_prices["HourUTC"].dt.tz_convert("CET")
+
+    df_prices["TimeDK"] = pd.to_datetime(df_prices["TimeDK"])
+    df_prices["TimeUTC"] = pd.to_datetime(df_prices["TimeUTC"])
+    df_prices["TimeUTC"] = df_prices["TimeUTC"].dt.tz_localize("UTC")
+    df_prices["TimeDK"] = df_prices["TimeUTC"].dt.tz_convert("CET")
+
+    ### Convert prices from DKK/MWh to DKK/kWh ###
+    ##df_prices["SpotPriceDKK"] = df_prices["SpotPriceDKK"] / 1000
+
+    ### Filter only DK2 prices ###
+    # df_prices = df_prices.loc[df_prices["PriceArea"] == "DK2"]
+
+    ### Keep only the local time and price columns ###
+    df_prices = df_prices[["TimeDK", "Consumption"]]
 
     ### Reset the index ###
     df_prices = df_prices.reset_index(drop=True)
