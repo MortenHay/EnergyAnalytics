@@ -116,7 +116,7 @@ def LoadProsumerData(filename="ProsumerHourly.csv"):
     # df_prices = df_prices.loc[df_prices["PriceArea"] == "DK2"]
 
     ### Keep only the local time and price columns ###
-    df_prices = df_prices[["TimeDK", "Consumption"]]
+    df_prices = df_prices[["TimeDK", "Consumption", "PV"]]
 
     ### Reset the index ###
     df_prices = df_prices.reset_index(drop=True)

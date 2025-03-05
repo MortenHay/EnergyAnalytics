@@ -220,18 +220,20 @@ for col in df_arbitrage_day.loc[:, df_arbitrage_day.columns.str.startswith("pric
     )
 
 
-# %% Task 3
+# %% Task 3.1
 df_prices = LoadPriceData()
 df_prices = PricesDK(df_prices)
 PH_prices = LoadProsumerData()
 df_prices = df_prices[["HourDK", "Spot", "Buy"]]
-PH_prices = PH_prices[["Consumption"]]
+PH_prices = PH_prices[["Consumption", "PV"]]
 df_prices = df_prices[
     (df_prices["HourDK"].dt.year >= 2022) & (df_prices["HourDK"].dt.year <= 2023)
 ].reset_index()
 df_prices["Spot"] = df_prices["Spot"]
 df_prices.rename(columns={"Spot": "Sell"}, inplace=True)
 df_prices["Consumption"] = PH_prices[["Consumption"]]
+df_prices["PV"] = PH_prices[["PV"]]
+df_prices["Net"] = df_prices["Consumption"] - df_prices["PV"]
 
 # Explicitly extract the year and hour from the datetime column
 df_prices["year"] = df_prices["HourDK"].dt.year
@@ -254,3 +256,57 @@ df_mean["Hourly Cost"] = df_mean_1["hourly cost"]
 # i df pricces, ny kolonne - consumtion fra den anden dataframe.
 
 # result = pd.merge(df_prices, on='HourDK', how='inner')
+
+# %% Task 3.3
+### Define the given parameters ###
+SOC_min = 0.1
+SOC_max = 1
+P_max = 5  # kW
+capacity = 10  # kWh
+eta_c = eta_d = 0.95
+C_0 = 0.5 * capacity
+C_n = 0.5 * capacity
+n = 24  # hours
+eta_d_inv = 1 / eta_d
+
+sell = df_prices["Sell"].values
+buy = df_prices["Buy"].values
+net = df_prices["Net"].values
+surplus = (-df_prices["Net"]).clip(lower=0).values
+shortage = (df_prices["Net"]).clip(lower=0).values
+EOD = df_prices["HourDK"].dt.hour == 23
+
+n = len(net)
+p_c = cp.Variable(n)
+p_d = cp.Variable(n)
+imp = cp.Variable(n)
+exp = cp.Variable(n)
+X = cp.Variable(n)
+d = cp.Variable(n, boolean=True)
+
+cost = cp.sum(-exp @ sell + imp @ buy)
+
+constraints = [
+    p_c >= 0,
+    p_d >= 0,
+    imp >= 0,
+    exp >= 0,
+    p_c <= d * P_max,
+    p_d <= (1 - d) * P_max,
+    imp == p_c + shortage,
+    exp == p_d + surplus,
+    X[0] == C_0 + p_c[0] * eta_c - p_d[0] * eta_d_inv,
+    X[EOD] == C_0,
+    X[-1] == C_n,
+    X >= SOC_min * capacity,
+    X <= SOC_max * capacity,
+]
+print("making steps")
+for i in range(1, n):
+    constraints += [X[i] == X[i - 1] + p_c[i] * eta_c - p_d[i] * eta_d_inv]
+print("making problem")
+problem = cp.Problem(cp.Minimize(cost), constraints)
+print("solving")
+problem.solve()
+print("done")
+print(problem.status)
