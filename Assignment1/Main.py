@@ -282,7 +282,6 @@ p_d = cp.Variable(n)
 imp = cp.Variable(n)
 exp = cp.Variable(n)
 X = cp.Variable(n)
-d = cp.Variable(n, boolean=True)
 
 cost = cp.sum(-exp @ sell + imp @ buy)
 
@@ -293,10 +292,10 @@ constraints = [
     exp >= 0,
     p_c <= P_max,
     p_d <= P_max,
-    imp == p_c - p_d + shortage,
-    exp == p_d - p_c + surplus,
+    imp == (p_c - p_d + shortage),
+    exp == (p_d - p_c + surplus),
     X[0] == C_0 + p_c[0] * eta_c - p_d[0] * eta_d_inv,
-    X[EOD] == C_0,
+    X[EOD] == C_n,
     X[-1] == C_n,
     X >= SOC_min * capacity,
     X <= SOC_max * capacity,
@@ -313,8 +312,8 @@ print(problem.status)
 
 # %%
 # Create the figure and axes objects for the two subplots
-pltrange = (4000, 4000 + 24 * 2)
-fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(8, 6), sharex=True)
+pltrange = (4008, 4008 + 24 * 2)
+fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(10, 16), sharex=True)
 fig.subplots_adjust(hspace=0.4)  # Adjust space between plots
 
 # Plot the prices in the top subplot (exclude the first and last hours)
@@ -365,7 +364,7 @@ ax2.grid(True, linestyle=":", linewidth=0.7, alpha=0.8)
 # Plot the state of charge in the middle subplot (exclude the first and last hours)
 ax3.plot(
     range(len(p_d.value))[pltrange[0] : pltrange[1] + 1],
-    np.insert(X.value, 0, C_0)[pltrange[0] : pltrange[1] + 1],
+    np.insert(X.value, 0, C_0)[pltrange[0] : pltrange[1] + 1] / capacity,
     label="SOC evolution",
     color="b",
     marker="o",
@@ -407,7 +406,7 @@ ax5.stairs(
     linewidth=2,
 )
 ax5.stairs(
-    shortage[pltrange[0] : pltrange[1]],
+    -shortage[pltrange[0] : pltrange[1]],
     range(len(p_d.value) + 1)[pltrange[0] : pltrange[1] + 1],
     label="Shortage",
     baseline=None,
@@ -419,6 +418,8 @@ ax5.set_ylabel("Power [kW]", fontsize=12)
 ax5.set_title("Surplus/Shortage Schedule", fontsize=14, fontweight="bold")
 ax5.legend(loc="upper center", fontsize=10, frameon=True, shadow=True, ncol=2)
 ax5.grid(True, linestyle=":", linewidth=0.7, alpha=0.8)
+ax5.set_xlim(pltrange)
+ax5.set_xticks(range(pltrange[0], pltrange[1] + 1, 4))
 # Show the plot
 plt.tight_layout()
 plt.show()
