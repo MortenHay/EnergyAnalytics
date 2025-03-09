@@ -5,6 +5,7 @@ import os
 def PricesDK(df_prices):
 
     df_prices["Spot"] = df_prices["SpotPriceDKK"]
+    df_prices["Sell"] = df_prices["Spot"]
 
     ### Calculate the fixed Tax column ###
 
@@ -94,31 +95,56 @@ def LoadPriceData(filename="ElspotpricesEA.csv"):
 
 
 def LoadProsumerData(filename="ProsumerHourly.csv"):
-    ### Load electricity prices ###
     price_path = os.path.join(os.getcwd(), filename)
-    df_prices = pd.read_csv(price_path)
+    df_pro = pd.read_csv(price_path)
 
     ### Convert to datetime ###
-    # df_prices["HourDK"] = pd.to_datetime(df_prices["HourDK"])
-    # df_prices["HourUTC"] = pd.to_datetime(df_prices["HourUTC"])
-    # df_prices["HourUTC"] = df_prices["HourUTC"].dt.tz_localize("UTC")
-    # df_prices["HourDK"] = df_prices["HourUTC"].dt.tz_convert("CET")
+    df_pro["TimeDK"] = pd.to_datetime(df_pro["TimeDK"])
+    df_pro["TimeUTC"] = pd.to_datetime(df_pro["TimeUTC"])
+    df_pro["TimeUTC"] = df_pro["TimeUTC"].dt.tz_localize("UTC")
+    df_pro["TimeDK"] = df_pro["TimeUTC"].dt.tz_convert("CET")
 
-    df_prices["TimeDK"] = pd.to_datetime(df_prices["TimeDK"])
-    df_prices["TimeUTC"] = pd.to_datetime(df_prices["TimeUTC"])
-    df_prices["TimeUTC"] = df_prices["TimeUTC"].dt.tz_localize("UTC")
-    df_prices["TimeDK"] = df_prices["TimeUTC"].dt.tz_convert("CET")
+    ### Rename columns for consistency ###
+    df_pro.rename(columns={"TimeDK": "HourDK"}, inplace=True)
 
-    ### Convert prices from DKK/MWh to DKK/kWh ###
-    ##df_prices["SpotPriceDKK"] = df_prices["SpotPriceDKK"] / 1000
-
-    ### Filter only DK2 prices ###
-    # df_prices = df_prices.loc[df_prices["PriceArea"] == "DK2"]
-
-    ### Keep only the local time and price columns ###
-    df_prices = df_prices[["TimeDK", "Consumption", "PV"]]
+    ### Keep only relevant columns ###
+    df_pro = df_pro[["HourDK", "Consumption", "PV"]]
 
     ### Reset the index ###
-    df_prices = df_prices.reset_index(drop=True)
+    df_pro = df_pro.reset_index(drop=True)
 
-    return df_prices
+    return df_pro
+
+
+def Netting(result, res):
+    if res == "No":
+        df_combined = result.copy()
+        df_combined["Profit"] = (
+            df_combined["PV"] * df_combined["Sell"]
+            - df_combined["Consumption"] * df_combined["Buy"]
+        )
+
+    elif res == "Yearly":
+        df_combined = (
+            result.groupby("Year")
+            .agg({"Buy": "mean", "Sell": "mean", "PV": "sum", "Consumption": "sum"})
+            .reset_index()
+        )
+
+        df_combined["Export"] = (df_combined["PV"] - df_combined["Consumption"]).clip(
+            lower=0
+        )
+        df_combined["Import"] = (df_combined["Consumption"] - df_combined["PV"]).clip(
+            lower=0
+        )
+        df_combined["Profit"] = (
+            df_combined["Export"] * df_combined["Sell"]
+            - df_combined["Import"] * df_combined["Buy"]
+        )
+
+    else:
+        raise ValueError("Invalid netting option. Use 'No' or 'Yearly'.")
+
+    Net = df_combined.groupby("Year").agg({"Profit": "sum"}).reset_index()
+
+    return Net

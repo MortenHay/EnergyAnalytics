@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import cvxpy as cp
-from UsefulFunctions import PricesDK, LoadPriceData, LoadProsumerData
+from UsefulFunctions import PricesDK, LoadPriceData, LoadProsumerData, Netting
 
 # %% Load Data
 df_prices = LoadPriceData()
@@ -306,7 +306,85 @@ df_aggregate["Hourly Cost"] = (
 # i df pricces, ny kolonne - consumtion fra den anden dataframe.
 
 # result = pd.merge(df_prices, on='HourDK', how='inner')
+# %% Task 3.2
+df_pro = LoadProsumerData()
+df_pro.rename(columns={"TimeDK": "HourDK"}, inplace=True)
+### Merge the dataframes to create 'result' ###
+result = df_prices  # pd.merge(df_prices, df_pro, on='HourDK', how='inner')
 
+### Add time features ###
+result["Month"] = result["HourDK"].dt.month
+result["Year"] = result["HourDK"].dt.year
+result["DayOfMonth"] = result["HourDK"].dt.day
+result["DayOfYear"] = result["HourDK"].dt.dayofyear
+
+# Now you can run Netting
+res = "Yearly"
+Net = Netting(result, res)
+
+# Display results
+print("The yearly netting results are:\n", Net[["Year", "Profit"]])
+
+# benefit on a yearly basis
+### Extract Yearly Costs Without PV
+df_aggregate.rename(columns={"Cost": "Cost_Without_PV"}, inplace=True)
+
+### Extract Net Metering Costs With PV
+df_net_metering = Net.copy()
+df_net_metering.rename(columns={"Profit": "Net_Metering_Profit"}, inplace=True)
+
+### Merge Costs Without PV and Costs With PV
+df_benefit = pd.merge(
+    df_aggregate, df_net_metering, left_on="year", right_on="Year", how="inner"
+)
+df_benefit["Cost_Without_PV"] = -df_benefit["Cost_Without_PV"]
+# Compute Yearly Benefit
+df_benefit["Yearly_Benefit"] = (
+    df_benefit["Net_Metering_Profit"] - df_benefit["Cost_Without_PV"]
+)
+
+# Display Results
+
+print(
+    "Yearly PV Benefit:\n",
+    df_benefit[["Year", "Cost_Without_PV", "Net_Metering_Profit", "Yearly_Benefit"]],
+)
+
+# %% print
+years = df_benefit["Year"].values
+costs = df_benefit["Cost_Without_PV"].values
+benefits = df_benefit["Yearly_Benefit"].values
+
+x = np.arange(len(years))  # Position of bars
+
+plt.figure(figsize=(8, 5))
+plt.bar(x - 0.2, costs, width=0.4, label="Cost Without PV", color="red")
+plt.bar(x + 0.2, benefits, width=0.4, label="Yearly Benefit", color="green")
+
+plt.xticks(x, years)
+plt.xlabel("Year")
+plt.ylabel("Amount (DKK)")
+plt.title("Comparison of Cost Without PV vs. Yearly Benefit")
+plt.legend()
+plt.grid(axis="y", linestyle="--", alpha=0.7)
+plt.show()
+
+# %% over 20 år
+
+# Assume a PV system cost
+pv_system_cost = 85000  # 85.000 DKK
+
+# Compute Total Savings Over 20 Years
+df_benefit["Total_Savings_20Y"] = (df_benefit["Yearly_Benefit"] * 20).round(2)
+
+# Payback Period "
+df_benefit["Payback_Period"] = (pv_system_cost / df_benefit["Yearly_Benefit"]).round(2)
+
+df_benefit["Payback_Period"] = df_benefit["Payback_Period"].astype(str) + " years"
+
+# Display Results
+print("\nPV System Investment Analysis:")
+print(df_benefit[["Year", "Yearly_Benefit", "Total_Savings_20Y", "Payback_Period"]])
 # %% Task 3.3
 ### Define the given parameters ###
 ## SOC limits
