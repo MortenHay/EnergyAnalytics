@@ -297,7 +297,7 @@ df_aggregate["Cost"] = df_aggregate["Buy"] * df_aggregate["Consumption"]
 df_prices["hourly cost"] = df_prices["Buy"] * df_prices["Consumption"]
 # Aggregate the hourly cost to yearly level
 df_aggregate["Hourly Cost"] = (
-    df_prices.groupby(["year"]).agg({"hourly cost": "sum"}).reset_index()
+    df_prices.groupby(["year"]).agg({"hourly cost": "sum"}).values
 )
 
 # df_prices = df_prices[["TimeDK", "Consumption"]]
