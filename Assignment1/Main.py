@@ -75,6 +75,8 @@ eta_d_inv = 1 / eta_d
 C_0 = 0.5 * capacity
 C_n = 0.5 * capacity
 ## Data series
+### Data series (Subset first 73 hours to reduce computation time)
+df_prices = df_prices.iloc[:73]  # Subset the entire dataframe first
 prices = df_prices["Spot"].values
 EOD = df_prices["hour"] == 23
 
@@ -169,14 +171,16 @@ ax2.legend(loc="upper center", fontsize=10, frameon=True, shadow=True, ncol=2)
 ax2.grid(True, linestyle=":", linewidth=0.7, alpha=0.8)
 
 # Plot the state of charge in the bottom subplot
-ax3.plot(
-    range(len(prices + 1))[pltrange[0] : pltrange[1] + 1],
-    np.insert(X.value, 0, C_0)[pltrange[0] : pltrange[1] + 1],
+plt.plot(
+    range(len(X.value)),  # Use X.value length
+    np.insert(X.value[:-1], 0, C_0),  # Insert C_0 but ensure shape remains 73
     label="SOC evolution",
     color="b",
     marker="o",
     linestyle="--",
 )
+
+
 ax3.set_xlabel("Hour", fontsize=12)
 ax3.set_ylabel("State of Charge [kWh]", fontsize=12)
 ax3.set_title("Battery State of Charge Over Time", fontsize=14, fontweight="bold")
@@ -558,10 +562,18 @@ df_aggregate["Hourly Cost"] = (
 
 # result = pd.merge(df_prices, on='HourDK', how='inner')
 # %% Task 3.2
+df_pro = df_pro[["HourDK","PV","Consumption"]]
+df_pro["Month"] = df_pro["HourDK"].dt.month
+df_pro["Year"] = df_pro["HourDK"].dt.year
+df_pro["DayOfMonth"] = df_pro["HourDK"].dt.day
+df_pro["DayOfYear"] = df_pro["HourDK"].dt.dayofyear
+
+
+df_prices = df_prices[["HourDK","Sell","Buy"]]
 df_pro = LoadProsumerData()
 df_pro.rename(columns={"TimeDK": "HourDK"}, inplace=True)
 ### Merge the dataframes to create 'result' ###
-result = df_prices  # pd.merge(df_prices, df_pro, on='HourDK', how='inner')
+result = pd.merge(df_prices, df_pro, on='HourDK', how='inner')
 
 ### Add time features ###
 result["Month"] = result["HourDK"].dt.month
@@ -569,73 +581,63 @@ result["Year"] = result["HourDK"].dt.year
 result["DayOfMonth"] = result["HourDK"].dt.day
 result["DayOfYear"] = result["HourDK"].dt.dayofyear
 
-# Now you can run Netting
-res = "Yearly"
-Net = Netting(result, res)
 
-# Display results
-print("The yearly netting results are:\n", Net[["Year", "Profit"]])
+res = "Hourly"
+Net_Hourly = Netting(result, res)
+print("\nThe hourly netting results are:\n", Net_Hourly)
+
+res = "Yearly"
+Net_Yearly = Netting(result, res)
+print("\nThe yearly netting results are:\n", Net_Yearly)
 
 # benefit on a yearly basis
 ### Extract Yearly Costs Without PV
-df_aggregate.rename(columns={"Cost": "Cost_Without_PV"}, inplace=True)
+df_hourly_cost = df_aggregate[["year", "Hourly Cost"]].rename(columns={"year": "Year"})
 
-### Extract Net Metering Costs With PV
-df_net_metering = Net.copy()
-df_net_metering.rename(columns={"Profit": "Net_Metering_Profit"}, inplace=True)
+# Merge Hourly Cost with Netting Profit
+df_comparison = pd.merge(Net_Hourly, df_hourly_cost, on="Year", how="inner")
 
-### Merge Costs Without PV and Costs With PV
-df_benefit = pd.merge(
-    df_aggregate, df_net_metering, left_on="year", right_on="Year", how="inner"
-)
-df_benefit["Cost_Without_PV"] = -df_benefit["Cost_Without_PV"]
-# Compute Yearly Benefit
-df_benefit["Yearly_Benefit"] = (
-    df_benefit["Net_Metering_Profit"] - df_benefit["Cost_Without_PV"]
-)
+# Correct Net Benefit Calculation
+df_comparison["Net Benefit"] = df_comparison["Profit"] + df_comparison["Hourly Cost"]  # Since Cost is an expense
 
-# Display Results
-
-print(
-    "Yearly PV Benefit:\n",
-    df_benefit[["Year", "Cost_Without_PV", "Net_Metering_Profit", "Yearly_Benefit"]],
-)
+# Display the comparison
+print("\nComparison of Hourly Netting Profit and Hourly Cost:\n", df_comparison)
 
 # %% print
-years = df_benefit["Year"].values
-costs = df_benefit["Cost_Without_PV"].values
-benefits = df_benefit["Yearly_Benefit"].values
-
-x = np.arange(len(years))  # Position of bars
-
+# Plot the comparison
 plt.figure(figsize=(8, 5))
-plt.bar(x - 0.2, costs, width=0.4, label="Cost Without PV", color="red")
-plt.bar(x + 0.2, benefits, width=0.4, label="Yearly Benefit", color="green")
 
-plt.xticks(x, years)
+plt.bar(df_comparison["Year"] - 0.2, df_comparison["Profit"], width=0.4, label="Netting Profit", color="blue")
+plt.bar(df_comparison["Year"] + 0.2, -df_comparison["Hourly Cost"], width=0.4, label="Hourly Cost (as expense)", color="red")  # Make cost negative
+
 plt.xlabel("Year")
 plt.ylabel("Amount (DKK)")
-plt.title("Comparison of Cost Without PV vs. Yearly Benefit")
+plt.title("Comparison of Hourly Netting Profit vs. Hourly Cost")
+plt.axhline(0, color='black', linewidth=1)  # Zero-line for reference
 plt.legend()
 plt.grid(axis="y", linestyle="--", alpha=0.7)
 plt.show()
 
 # %% over 20 år
 
-# Assume a PV system cost
-pv_system_cost = 85000  # 85.000 DKK
+pv_system_cost = 85000  # 85,000 DKK (example assumption)
 
-# Compute Total Savings Over 20 Years
-df_benefit["Total_Savings_20Y"] = (df_benefit["Yearly_Benefit"] * 20).round(2)
+# Compute Total Savings Over 20 
+df_comparison["Total_Savings_20Y"] = (df_comparison["Net Benefit"] * 20).round(2)
 
-# Payback Period "
-df_benefit["Payback_Period"] = (pv_system_cost / df_benefit["Yearly_Benefit"]).round(2)
+# Compute Payback Period
+df_comparison["Payback_Period"] = (pv_system_cost / df_comparison["Net Benefit"]).round(2).astype(str) + " years"
 
-df_benefit["Payback_Period"] = df_benefit["Payback_Period"].astype(str) + " years"
+print("\nPV System Investment Analysis Over 20 Years:")
+print(df_comparison[["Year", "Net Benefit", "Total_Savings_20Y", "Payback_Period"]])
 
-# Display Results
-print("\nPV System Investment Analysis:")
-print(df_benefit[["Year", "Yearly_Benefit", "Total_Savings_20Y", "Payback_Period"]])
+avg_net_benefit = df_comparison["Net Benefit"].mean()
+avg_total_savings_20Y = avg_net_benefit * 20
+avg_payback_period = pv_system_cost / avg_net_benefit
+
+
+
+
 # %% Task 3.3
 ### Define the given parameters ###
 ## SOC limits
