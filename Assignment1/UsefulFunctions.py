@@ -98,7 +98,6 @@ def LoadProsumerData(filename="ProsumerHourly.csv"):
     price_path = os.path.join(os.getcwd(), filename)
     df_pro = pd.read_csv(price_path)
 
-
     ### Convert to datetime ###
     df_pro["TimeDK"] = pd.to_datetime(df_pro["TimeDK"])
     df_pro["TimeUTC"] = pd.to_datetime(df_pro["TimeUTC"])
@@ -111,6 +110,11 @@ def LoadProsumerData(filename="ProsumerHourly.csv"):
 
     ### Keep only relevant columns ###
     df_pro = df_pro[["HourDK", "Consumption", "PV"]]
+    ### Rename columns for consistency ###
+    df_pro.rename(columns={"TimeDK": "HourDK"}, inplace=True)
+
+    ### Keep only relevant columns ###
+    df_pro = df_pro[["HourDK", "Consumption", "PV"]]
 
     ### Reset the index ###
     df_pro = df_pro.reset_index(drop=True)
@@ -118,27 +122,35 @@ def LoadProsumerData(filename="ProsumerHourly.csv"):
     return df_pro
 
 
-
 def Netting(result, res):
     if res == "No":
         df_combined = result.copy()
-        df_combined['Profit'] = df_combined["PV"] * df_combined["Sell"] - df_combined["Consumption"] * df_combined["Buy"]
-    
+        df_combined["Profit"] = (
+            df_combined["PV"] * df_combined["Sell"]
+            - df_combined["Consumption"] * df_combined["Buy"]
+        )
+
     elif res == "Yearly":
-        df_combined = result.groupby('Year').agg({
-            'Buy': 'mean',
-            'Sell': 'mean',
-            'PV': 'sum',
-            'Consumption': 'sum'
-        }).reset_index()
-        
-        df_combined["Export"] = (df_combined["PV"] - df_combined["Consumption"]).clip(lower=0)
-        df_combined["Import"] = (df_combined["Consumption"] - df_combined["PV"]).clip(lower=0)
-        df_combined['Profit'] = df_combined["Export"] * df_combined["Sell"] - df_combined["Import"] * df_combined["Buy"]
-    
+        df_combined = (
+            result.groupby("Year")
+            .agg({"Buy": "mean", "Sell": "mean", "PV": "sum", "Consumption": "sum"})
+            .reset_index()
+        )
+
+        df_combined["Export"] = (df_combined["PV"] - df_combined["Consumption"]).clip(
+            lower=0
+        )
+        df_combined["Import"] = (df_combined["Consumption"] - df_combined["PV"]).clip(
+            lower=0
+        )
+        df_combined["Profit"] = (
+            df_combined["Export"] * df_combined["Sell"]
+            - df_combined["Import"] * df_combined["Buy"]
+        )
+
     else:
         raise ValueError("Invalid netting option. Use 'No' or 'Yearly'.")
-    
-    Net = df_combined.groupby('Year').agg({'Profit': 'sum'}).reset_index()
-    
+
+    Net = df_combined.groupby("Year").agg({"Profit": "sum"}).reset_index()
+
     return Net
