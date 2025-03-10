@@ -605,32 +605,28 @@ df_comparison["Net Benefit"] = (
 # Display the comparison
 print("\nComparison of Hourly Netting Profit and Hourly Cost:\n", df_comparison)
 
-# %% print
-# Plot the comparison
+# %% Improved Bar Plot
 plt.figure(figsize=(8, 5))
 
-plt.bar(
-    df_comparison["Year"] - 0.2,
-    df_comparison["Profit"],
-    width=0.4,
-    label="Netting Profit",
-    color="blue",
-)
-plt.bar(
-    df_comparison["Year"] + 0.2,
-    -df_comparison["Hourly Cost"],
-    width=0.4,
-    label="Hourly Cost (as expense)",
-    color="red",
-)  # Make cost negative
+# Define x positions for bars
+x_years = df_comparison["Year"]
 
+# Plot bars for Netting Profit and Hourly Cost
+plt.bar(x_years - 0.2, df_comparison["Profit"], width=0.4, label="Netting Profit", color="blue")
+plt.bar(x_years + 0.2, -df_comparison["Hourly Cost"], width=0.4, label="Hourly Cost (as expense)", color="red")  # Negative to reflect cost
+
+# Formatting
 plt.xlabel("Year")
 plt.ylabel("Amount (DKK)")
 plt.title("Comparison of Hourly Netting Profit vs. Hourly Cost")
-plt.axhline(0, color="black", linewidth=1)  # Zero-line for reference
+plt.axhline(0, color='black', linewidth=1)  # Zero-line for reference
+plt.xticks([2022, 2023], labels=["2022", "2023"])  # Ensure only 2022 and 2023 appear
 plt.legend()
 plt.grid(axis="y", linestyle="--", alpha=0.7)
+
+# Show plot
 plt.show()
+
 
 # %% over 20 år
 
@@ -650,6 +646,12 @@ print(df_comparison[["Year", "Net Benefit", "Total_Savings_20Y", "Payback_Period
 avg_net_benefit = df_comparison["Net Benefit"].mean()
 avg_total_savings_20Y = avg_net_benefit * 20
 avg_payback_period = pv_system_cost / avg_net_benefit
+
+
+print(f"Average Net Benefit: {avg_net_benefit:.2f} DKK")
+print(f"Average Total Savings Over 20 Years: {avg_total_savings_20Y:.2f} DKK")
+print(f"Average Payback Period: {avg_payback_period:.2f} years")
+
 
 
 # %% Task 3.3
