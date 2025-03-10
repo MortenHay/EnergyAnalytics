@@ -569,7 +569,7 @@ df_pro["DayOfMonth"] = df_pro["HourDK"].dt.day
 df_pro["DayOfYear"] = df_pro["HourDK"].dt.dayofyear
 
 
-df_prices = df_prices[["HourDK", "Sell", "Buy"]]
+df_prices = df_prices[["HourDK", "Sell", "Buy", "Net"]]
 df_pro = LoadProsumerData()
 df_pro.rename(columns={"TimeDK": "HourDK"}, inplace=True)
 ### Merge the dataframes to create 'result' ###
@@ -612,14 +612,26 @@ plt.figure(figsize=(8, 5))
 x_years = df_comparison["Year"]
 
 # Plot bars for Netting Profit and Hourly Cost
-plt.bar(x_years - 0.2, df_comparison["Profit"], width=0.4, label="Netting Profit", color="blue")
-plt.bar(x_years + 0.2, -df_comparison["Hourly Cost"], width=0.4, label="Hourly Cost (as expense)", color="red")  # Negative to reflect cost
+plt.bar(
+    x_years - 0.2,
+    df_comparison["Profit"],
+    width=0.4,
+    label="Netting Profit",
+    color="blue",
+)
+plt.bar(
+    x_years + 0.2,
+    -df_comparison["Hourly Cost"],
+    width=0.4,
+    label="Hourly Cost (as expense)",
+    color="red",
+)  # Negative to reflect cost
 
 # Formatting
 plt.xlabel("Year")
 plt.ylabel("Amount (DKK)")
 plt.title("Comparison of Hourly Netting Profit vs. Hourly Cost")
-plt.axhline(0, color='black', linewidth=1)  # Zero-line for reference
+plt.axhline(0, color="black", linewidth=1)  # Zero-line for reference
 plt.xticks([2022, 2023], labels=["2022", "2023"])  # Ensure only 2022 and 2023 appear
 plt.legend()
 plt.grid(axis="y", linestyle="--", alpha=0.7)
@@ -651,7 +663,6 @@ avg_payback_period = pv_system_cost / avg_net_benefit
 print(f"Average Net Benefit: {avg_net_benefit:.2f} DKK")
 print(f"Average Total Savings Over 20 Years: {avg_total_savings_20Y:.2f} DKK")
 print(f"Average Payback Period: {avg_payback_period:.2f} years")
-
 
 
 # %% Task 3.3
@@ -731,6 +742,26 @@ print("solving")
 problem.solve()
 print("done")
 print(problem.status)
+
+# %% Task 3.3 debugging plot
+
+# %% Task 3.3 data analysis
+### Create the dataframe with the optimization results ###
+df_prosumer = pd.DataFrame(
+    {
+        "Charging Power [kW]": p_c.value,
+        "Discharging Power [kW]": p_d.value,
+        "State of Charge [kWh]": X.value,
+        "Import Power [kW]": imp.value,
+        "Export Power [kW]": exp.value,
+    }
+)
+## Calculate profits of each hour
+df_prosumer["Cost [DKK]"] = (
+    -df_prosumer["Export Power [kW]"] * sell + df_prosumer["Import Power [kW]"] * buy
+)
+df_prosumer["Time"] = df_prices["HourDK"]
+df_prosumer["Cost [DKK]"].groupby(df_prosumer["Time"].dt.year).sum()
 
 # %% Task 3.3 debugging plot
 ### Debugging plot to check the optimization results ###
