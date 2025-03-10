@@ -75,8 +75,8 @@ eta_d_inv = 1 / eta_d
 C_0 = 0.5 * capacity
 C_n = 0.5 * capacity
 ## Data series
-### Data series (Subset first 73 hours to reduce computation time)
-df_prices = df_prices.iloc[:73]  # Subset the entire dataframe first
+### Data series
+df_prices = df_prices.iloc  # Subset the entire dataframe first
 prices = df_prices["Spot"].values
 EOD = df_prices["hour"] == 23
 
@@ -171,9 +171,9 @@ ax2.legend(loc="upper center", fontsize=10, frameon=True, shadow=True, ncol=2)
 ax2.grid(True, linestyle=":", linewidth=0.7, alpha=0.8)
 
 # Plot the state of charge in the bottom subplot
-plt.plot(
-    range(len(X.value)),  # Use X.value length
-    np.insert(X.value[:-1], 0, C_0),  # Insert C_0 but ensure shape remains 73
+ax3.plot(
+    range(len(prices + 1))[pltrange[0] : pltrange[1] + 1],
+    np.insert(X.value, 0, C_0)[pltrange[0] : pltrange[1] + 1],
     label="SOC evolution",
     color="b",
     marker="o",
@@ -562,18 +562,18 @@ df_aggregate["Hourly Cost"] = (
 
 # result = pd.merge(df_prices, on='HourDK', how='inner')
 # %% Task 3.2
-df_pro = df_pro[["HourDK","PV","Consumption"]]
+df_pro = df_pro[["HourDK", "PV", "Consumption"]]
 df_pro["Month"] = df_pro["HourDK"].dt.month
 df_pro["Year"] = df_pro["HourDK"].dt.year
 df_pro["DayOfMonth"] = df_pro["HourDK"].dt.day
 df_pro["DayOfYear"] = df_pro["HourDK"].dt.dayofyear
 
 
-df_prices = df_prices[["HourDK","Sell","Buy"]]
+df_prices = df_prices[["HourDK", "Sell", "Buy"]]
 df_pro = LoadProsumerData()
 df_pro.rename(columns={"TimeDK": "HourDK"}, inplace=True)
 ### Merge the dataframes to create 'result' ###
-result = pd.merge(df_prices, df_pro, on='HourDK', how='inner')
+result = pd.merge(df_prices, df_pro, on="HourDK", how="inner")
 
 ### Add time features ###
 result["Month"] = result["HourDK"].dt.month
@@ -598,7 +598,9 @@ df_hourly_cost = df_aggregate[["year", "Hourly Cost"]].rename(columns={"year": "
 df_comparison = pd.merge(Net_Hourly, df_hourly_cost, on="Year", how="inner")
 
 # Correct Net Benefit Calculation
-df_comparison["Net Benefit"] = df_comparison["Profit"] + df_comparison["Hourly Cost"]  # Since Cost is an expense
+df_comparison["Net Benefit"] = (
+    df_comparison["Profit"] + df_comparison["Hourly Cost"]
+)  # Since Cost is an expense
 
 # Display the comparison
 print("\nComparison of Hourly Netting Profit and Hourly Cost:\n", df_comparison)
@@ -607,13 +609,25 @@ print("\nComparison of Hourly Netting Profit and Hourly Cost:\n", df_comparison)
 # Plot the comparison
 plt.figure(figsize=(8, 5))
 
-plt.bar(df_comparison["Year"] - 0.2, df_comparison["Profit"], width=0.4, label="Netting Profit", color="blue")
-plt.bar(df_comparison["Year"] + 0.2, -df_comparison["Hourly Cost"], width=0.4, label="Hourly Cost (as expense)", color="red")  # Make cost negative
+plt.bar(
+    df_comparison["Year"] - 0.2,
+    df_comparison["Profit"],
+    width=0.4,
+    label="Netting Profit",
+    color="blue",
+)
+plt.bar(
+    df_comparison["Year"] + 0.2,
+    -df_comparison["Hourly Cost"],
+    width=0.4,
+    label="Hourly Cost (as expense)",
+    color="red",
+)  # Make cost negative
 
 plt.xlabel("Year")
 plt.ylabel("Amount (DKK)")
 plt.title("Comparison of Hourly Netting Profit vs. Hourly Cost")
-plt.axhline(0, color='black', linewidth=1)  # Zero-line for reference
+plt.axhline(0, color="black", linewidth=1)  # Zero-line for reference
 plt.legend()
 plt.grid(axis="y", linestyle="--", alpha=0.7)
 plt.show()
@@ -622,11 +636,13 @@ plt.show()
 
 pv_system_cost = 85000  # 85,000 DKK (example assumption)
 
-# Compute Total Savings Over 20 
+# Compute Total Savings Over 20
 df_comparison["Total_Savings_20Y"] = (df_comparison["Net Benefit"] * 20).round(2)
 
 # Compute Payback Period
-df_comparison["Payback_Period"] = (pv_system_cost / df_comparison["Net Benefit"]).round(2).astype(str) + " years"
+df_comparison["Payback_Period"] = (pv_system_cost / df_comparison["Net Benefit"]).round(
+    2
+).astype(str) + " years"
 
 print("\nPV System Investment Analysis Over 20 Years:")
 print(df_comparison[["Year", "Net Benefit", "Total_Savings_20Y", "Payback_Period"]])
@@ -634,8 +650,6 @@ print(df_comparison[["Year", "Net Benefit", "Total_Savings_20Y", "Payback_Period
 avg_net_benefit = df_comparison["Net Benefit"].mean()
 avg_total_savings_20Y = avg_net_benefit * 20
 avg_payback_period = pv_system_cost / avg_net_benefit
-
-
 
 
 # %% Task 3.3
