@@ -104,7 +104,6 @@ def LoadProsumerData(filename="ProsumerHourly.csv"):
     df_pro["TimeUTC"] = df_pro["TimeUTC"].dt.tz_localize("UTC")
     df_pro["TimeDK"] = df_pro["TimeUTC"].dt.tz_convert("CET")
 
-
     ### Rename columns for consistency ###
     df_pro.rename(columns={"TimeDK": "HourDK"}, inplace=True)
 
@@ -122,42 +121,48 @@ def LoadProsumerData(filename="ProsumerHourly.csv"):
     return df_pro
 
 
-
-
 def Netting(result, res):
-    
+
     if res == "No":
-        
+
         ### Create a copy for the input df ###
         df_combined = result.copy()
         ### Calculate the profit for each hour in a new column ###
-        df_combined['Profit'] = df_combined["PV"]*df_combined["Sell"] - df_combined["Consumption"]*df_combined["Buy"]
-    
-    else:    
-        
+        df_combined["Profit"] = (
+            df_combined["PV"] * df_combined["Sell"]
+            - df_combined["Consumption"] * df_combined["Buy"]
+        )
+
+    else:
+
         if res == "Yearly":
-            
+
             ### Here we aggregate prices and PV/Load on a yearly basis ###
-            df_combined = result.groupby('Year').agg({
-                'Buy': 'mean',
-                'Sell': 'mean',
-                'PV': 'sum',
-                'Consumption': 'sum'
-            }).reset_index()
-            
-            
+            df_combined = (
+                result.groupby("Year")
+                .agg({"Buy": "mean", "Sell": "mean", "PV": "sum", "Consumption": "sum"})
+                .reset_index()
+            )
+
         elif res == "Hourly":
-    
+
             ### No need to aggregate under hourly netting ###
             df_combined = result.copy()
-        
+
         ### Calculate Imports/Exports ###
-        df_combined["Export"] = (df_combined["PV"] - df_combined["Consumption"]).where(df_combined["PV"] > df_combined["Consumption"], other=0)
-        df_combined["Import"] = (df_combined["Consumption"] - df_combined["PV"]).where(df_combined["Consumption"] > df_combined["PV"], other=0)
+        df_combined["Export"] = (df_combined["PV"] - df_combined["Consumption"]).where(
+            df_combined["PV"] > df_combined["Consumption"], other=0
+        )
+        df_combined["Import"] = (df_combined["Consumption"] - df_combined["PV"]).where(
+            df_combined["Consumption"] > df_combined["PV"], other=0
+        )
         ### Calculate Profit ###
-        df_combined['Profit'] = df_combined["Export"]*df_combined["Sell"] - df_combined["Import"]*df_combined["Buy"]
-        
+        df_combined["Profit"] = (
+            df_combined["Export"] * df_combined["Sell"]
+            - df_combined["Import"] * df_combined["Buy"]
+        )
+
     ### Aggregate per year ###
-    Net = df_combined.groupby('Year').agg({'Profit': 'sum'}).reset_index()
-    
+    Net = df_combined.groupby("Year").agg({"Profit": "sum"}).reset_index()
+
     return Net
