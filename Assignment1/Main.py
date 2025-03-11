@@ -76,7 +76,6 @@ C_0 = 0.5 * capacity
 C_n = 0.5 * capacity
 ## Data series
 ### Data series
-df_prices = df_prices.iloc  # Subset the entire dataframe first
 prices = df_prices["Spot"].values
 EOD = df_prices["hour"] == 23
 
