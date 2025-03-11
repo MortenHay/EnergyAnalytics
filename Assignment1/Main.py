@@ -309,7 +309,7 @@ for i, col in enumerate(
     # Set the legend
     # axs[i//3, i%3].legend(fontsize=14)
 fig.legend(
-    ["Linear regression", "Data"],
+    ["Data", "Linear regression"],
     loc="upper center",
     bbox_to_anchor=(0.5, -0.005),
     ncol=2,
