@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import cvxpy as cp
+import scipy.optimize as opt
 from UsefulFunctions import PricesDK, LoadPriceData, LoadProsumerData, Netting
 
 # %% Load Data
@@ -244,38 +245,78 @@ df_arbitrage_day["charge total [kW]"] = (
     df_arbitrage[["charge total [kW]"]].groupby(df_arbitrage["Time"].dt.date).sum()
 )
 ## Standard deviation of the price
-df_arbitrage_day["price SD"] = (
+df_arbitrage_day["price SD [DKK/kWh]"] = (
     df_arbitrage[["Price [DKK/kWh]"]].groupby(df_arbitrage["Time"].dt.date).std()
 )
 ## Variance of the price
-df_arbitrage_day["price var"] = (
+df_arbitrage_day["price var [(DKK/kWh)^2]"] = (
     df_arbitrage[["Price [DKK/kWh]"]].groupby(df_arbitrage["Time"].dt.date).var()
 )
 ## Mean price
-df_arbitrage_day["price mean"] = (
+df_arbitrage_day["price mean [DKK/kWh]"] = (
     df_arbitrage[["Price [DKK/kWh]"]].groupby(df_arbitrage["Time"].dt.date).mean()
 )
 ## Max price
-df_arbitrage_day["price max"] = (
+df_arbitrage_day["price max [DKK/kWh]"] = (
     df_arbitrage[["Price [DKK/kWh]"]].groupby(df_arbitrage["Time"].dt.date).max()
 )
 ## Min price
-df_arbitrage_day["price min"] = (
+df_arbitrage_day["price min [DKK/kWh]"] = (
     df_arbitrage[["Price [DKK/kWh]"]].groupby(df_arbitrage["Time"].dt.date).min()
 )
 ## Price span
-df_arbitrage_day["price span"] = (
-    df_arbitrage_day["price max"] - df_arbitrage_day["price min"]
+df_arbitrage_day["price span [DKK/kWh]"] = (
+    df_arbitrage_day["price max [DKK/kWh]"] - df_arbitrage_day["price min [DKK/kWh]"]
 )
-## Coefficient of variance
+""" ## Coefficient of variance
 df_arbitrage_day["price cov"] = (
     df_arbitrage_day["price SD"] / df_arbitrage_day["price mean"]
-)
-## Simple plot of profit vs. each metric
-for col in df_arbitrage_day.loc[:, df_arbitrage_day.columns.str.startswith("price")]:
-    df_arbitrage_day.plot(
-        x=col, y="Profit [DKK]", kind="scatter", title=f"Profit vs {col}", grid=True
+) """
+fig, axs = plt.subplots(2, 3, figsize=(15, 10))
+fig.suptitle("Daily statistics for arbitrage", fontsize=20)
+## Plotting the daily statistics
+for i, col in enumerate(
+    df_arbitrage_day.loc[:, df_arbitrage_day.columns.str.startswith("price")]
+):
+    # Do linear regression
+    m, b = np.polyfit(df_arbitrage_day[col], df_arbitrage_day["Profit [DKK]"], 1)
+    # Plot the scatter plot
+    axs[i // 3, i % 3].scatter(
+        df_arbitrage_day[col], df_arbitrage_day["Profit [DKK]"], label="Data"
     )
+    # Plot the linear regression
+    axs[i // 3, i % 3].plot(
+        df_arbitrage_day[col],
+        m * df_arbitrage_day[col] + b,
+        color="red",
+        label="Linear regression",
+    )
+    # Calculate r^2
+    residuals = df_arbitrage_day["Profit [DKK]"] - (m * df_arbitrage_day[col] + b)
+    ss_res = np.sum(residuals**2)
+    ss_tot = np.sum(
+        (df_arbitrage_day["Profit [DKK]"] - np.mean(df_arbitrage_day["Profit [DKK]"]))
+        ** 2
+    )
+    r_squared = 1 - (ss_res / ss_tot)
+    # Set the title
+    axs[i // 3, i % 3].set_title(
+        "{} ($R^2={}$)".format(col, round(r_squared, 2)), fontsize=16
+    )
+    # Set the labels
+    axs[i // 3, i % 3].set_xlabel(col, fontsize=16)
+    axs[i // 3, i % 3].set_ylabel("Profit [DKK]", fontsize=16)
+    # Set the legend
+    # axs[i//3, i%3].legend(fontsize=14)
+fig.legend(
+    ["Linear regression", "Data"],
+    loc="upper center",
+    bbox_to_anchor=(0.5, -0.005),
+    ncol=2,
+    fontsize=14,
+)
+plt.tight_layout()
+plt.show()
 
 # %% Task 2.3
 df_sot = pd.DataFrame(index=range(2019, 2024))
