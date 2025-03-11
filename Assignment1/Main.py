@@ -801,7 +801,7 @@ df_prosumer["Cost [DKK]"] = (
     -df_prosumer["Export Power [kW]"] * sell + df_prosumer["Import Power [kW]"] * buy
 )
 df_prosumer["Time"] = df_prices["HourDK"]
-df_prosumer["Cost [DKK]"].groupby(df_prosumer["Time"].dt.year).sum()
+print(df_prosumer["Cost [DKK]"].groupby(df_prosumer["Time"].dt.year).sum())
 
 # %% Task 3.3 debugging plot
 ### Debugging plot to check the optimization results ###
@@ -919,6 +919,7 @@ ax5.set_xticks(range(pltrange[0], pltrange[1] + 1, 4))
 # Show the plot
 plt.tight_layout()
 plt.show()
+
 # %% Task 3.4
 ### Define the given parameters ###
 SOC_min = 0.1
@@ -980,9 +981,4 @@ df_arb_battery["Cost"] = (
 )
 df_arb_battery["Time"] = df_prices["HourDK"]
 
-
-plt.figure()
-df_arb_battery
-df_arb_battery["cumsum"] = df_arb_battery["Cost"].cumsum()
-plt.plot(df_arb_battery["Time"], df_arb_battery["cumsum"])
-plt.show()
+print(df_arb_battery["Cost"].groupby(df_arb_battery["Time"].dt.year).sum())
