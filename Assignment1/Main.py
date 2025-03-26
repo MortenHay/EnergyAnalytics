@@ -602,7 +602,7 @@ df_aggregate["Hourly Cost"] = (
 
 # result = pd.merge(df_prices, on='HourDK', how='inner')
 # %% Task 3.2
-df_pro = df_pro[["HourDK", "PV", "Consumption"]]
+df_pro = df_pro[["HourDK", "PV"]]
 df_pro["Month"] = df_pro["HourDK"].dt.month
 df_pro["Year"] = df_pro["HourDK"].dt.year
 df_pro["DayOfMonth"] = df_pro["HourDK"].dt.day
@@ -933,7 +933,7 @@ eta_d_inv = 1 / eta_d
 
 sell = df_prices["Sell"].values
 buy = df_prices["Buy"].values
-net = df_prices["Consumption"].values
+net = df_pro["Consumption"].values
 
 surplus = (-net).clip(min=0)
 shortage = (net).clip(min=0)
